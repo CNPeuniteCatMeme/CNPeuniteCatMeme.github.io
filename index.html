@@ -1,0 +1,272 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>全球标准哈希值计算器</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.jsdelivr.net/npm/crypto-js@4.2.0/crypto-js.min.js"></script>
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        primary: '#3B82F6',
+                        us: '#0F172A',
+                        eu: '#F59E0B'
+                    }
+                }
+            }
+        }
+    </script>
+    <style type="text/tailwindcss">
+        @layer utilities {
+            .card-radius {
+                border-radius: 1.5rem;
+            }
+            .input-radius {
+                border-radius: 1rem;
+            }
+            .btn-radius {
+                border-radius: 1rem;
+            }
+            .region-tag {
+                border-radius: 0.75rem;
+            }
+        }
+    </style>
+    <style>
+        body {
+            font-family: system-ui, sans-serif;
+            background-color: #F9FAFB;
+            min-height: 100vh;
+            padding: 20px 0;
+            display: flex;
+            flex-direction: column;
+        }
+        input:focus, textarea:focus {
+            outline: none;
+            box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.15);
+        }
+        .algorithm-option:hover {
+            background-color: rgba(59, 130, 246, 0.05);
+        }
+        .result-scroll {
+            max-height: 200px;
+            overflow-y: auto;
+            scrollbar-width: thin;
+            scrollbar-color: #3B82F6 #F3F4F6;
+        }
+        .result-scroll::-webkit-scrollbar {
+            width: 6px;
+        }
+        .result-scroll::-webkit-scrollbar-thumb {
+            background-color: #3B82F6;
+            border-radius: 3px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container mx-auto px-4 max-w-3xl w-full">
+        <div class="text-center mb-10 mt-6">
+            <h1 class="text-[clamp(1.7rem,5vw,2.3rem)] font-bold text-gray-800">全球标准哈希值计算器</h1>
+            <p class="text-gray-500 text-lg">支持多地区算法，一键计算安全哈希值</p>
+        </div>
+
+        <div class="bg-white card-radius shadow-lg p-6 md:p-8 mb-8 w-full">
+            <form id="hash-form" class="flex flex-col gap-6">
+                <div>
+                    <label for="input-text" class="block text-gray-700 font-medium mb-3">
+                        输入需计算哈希值的内容
+                    </label>
+                    <textarea 
+                        id="input-text" 
+                        rows="4" 
+                        class="w-full px-4 py-3 input-radius border border-gray-200 focus:border-primary transition-all resize-none"
+                        placeholder="输入文本、字符串或文件内容..."
+                        required
+                    ></textarea>
+                </div>
+
+                <div>
+                    <label class="block text-gray-700 font-medium mb-3">
+                        选择地区及对应算法
+                    </label>
+                    
+                    <div class="flex flex-wrap gap-2 mb-4">
+                        <button type="button" class="region-tag px-4 py-1.5 text-sm font-medium bg-us text-white" onclick="switchRegion('us')">
+                            美国标准
+                        </button>
+                        <button type="button" class="region-tag px-4 py-1.5 text-sm font-medium bg-eu text-white" onclick="switchRegion('eu')">
+                            欧盟标准
+                        </button>
+                    </div>
+
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-2" id="algorithm-list">
+                        <!-- 美国标准默认显示 -->
+                        <div class="algorithm-option input-radius border border-gray-200 px-4 py-3 flex items-center justify-between cursor-pointer bg-primary/5 border-primary" onclick="selectAlgorithm('SHA-256')">
+                            <span class="font-medium">SHA-256</span>
+                            <span class="text-xs text-gray-500">美国联邦标准</span>
+                        </div>
+                        <div class="algorithm-option input-radius border border-gray-200 px-4 py-3 flex items-center justify-between cursor-pointer" onclick="selectAlgorithm('SHA-512')">
+                            <span class="font-medium">SHA-512</span>
+                            <span class="text-xs text-gray-500">SHA-2系列算法</span>
+                        </div>
+                        <div class="algorithm-option input-radius border border-gray-200 px-4 py-3 flex items-center justify-between cursor-pointer" onclick="selectAlgorithm('MD5')">
+                            <span class="font-medium">MD5</span>
+                            <span class="text-xs text-gray-500">经典哈希算法</span>
+                        </div>
+                        <div class="algorithm-option input-radius border border-gray-200 px-4 py-3 flex items-center justify-between cursor-pointer" onclick="selectAlgorithm('SHA-1')">
+                            <span class="font-medium">SHA-1</span>
+                            <span class="text-xs text-gray-500">早期联邦算法</span>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="flex flex-wrap gap-3">
+                    <button 
+                        type="submit" 
+                        class="flex-1 bg-primary text-white btn-radius py-3 font-semibold text-lg hover:bg-primary/90 transition-colors"
+                    >
+                        计算哈希值
+                    </button>
+                    <button 
+                        type="button" 
+                        id="copy-btn" 
+                        class="bg-gray-100 text-gray-700 btn-radius py-3 px-6 font-semibold hover:bg-gray-200 transition-colors"
+                        disabled
+                    >
+                        复制结果
+                    </button>
+                    <button 
+                        type="button" 
+                        id="clear-btn" 
+                        class="bg-gray-100 text-gray-700 btn-radius py-3 px-6 font-semibold hover:bg-gray-200 transition-colors"
+                    >
+                        清空
+                    </button>
+                </div>
+            </form>
+        </div>
+
+        <div id="result-card" class="bg-white card-radius shadow-lg p-6 md:p-8 hidden w-full">
+            <div class="flex items-center justify-between mb-4">
+                <h2 class="text-xl font-bold text-gray-800">
+                    哈希计算结果
+                </h2>
+                <span id="algorithm-label" class="bg-primary/10 text-primary px-3 py-1 rounded-full text-sm font-medium">
+                    算法：SHA-256
+                </span>
+            </div>
+            <div class="bg-gray-50 input-radius p-4 result-scroll">
+                <p id="hash-result" class="text-gray-800 text-sm font-mono break-all"></p>
+            </div>
+        </div>
+    </div>
+
+    <footer class="mt-auto py-6 text-center text-gray-500 text-sm w-full">
+        <p>© 2025 全球标准哈希值计算器 | 支持多地区算法标准</p>
+    </footer>
+
+    <script>
+        let selectedAlgorithm = 'SHA-256';
+
+        const regionAlgorithms = {
+            us: [
+                { name: 'SHA-256', desc: '美国联邦标准', color: 'us' },
+                { name: 'SHA-512', desc: 'SHA-2系列算法', color: 'us' },
+                { name: 'MD5', desc: '经典哈希算法', color: 'us' },
+                { name: 'SHA-1', desc: '早期联邦算法', color: 'us' }
+            ],
+            eu: [
+                { name: 'SHA-256', desc: '欧盟通用标准', color: 'eu' },
+                { name: 'SHA-3-256', desc: 'SHA-3系列算法', color: 'eu' },
+                { name: 'Whirlpool', desc: '欧盟推荐算法', color: 'eu' }
+            ]
+        };
+
+        function switchRegion(region) {
+            const algorithmList = document.getElementById('algorithm-list');
+            const algorithms = regionAlgorithms[region];
+            let html = '';
+            algorithms.forEach((alg, index) => {
+                const isActive = index === 0 ? 'bg-primary/5 border-primary' : '';
+                html += `
+                    <div class="algorithm-option input-radius border border-gray-200 px-4 py-3 flex items-center justify-between cursor-pointer ${isActive}" onclick="selectAlgorithm('${alg.name}')">
+                        <span class="font-medium">${alg.name}</span>
+                        <span class="text-xs text-gray-500">${alg.desc}</span>
+                    </div>
+                `;
+            });
+            algorithmList.innerHTML = html;
+            selectAlgorithm(algorithms[0].name);
+        }
+
+        function selectAlgorithm(algName) {
+            const algorithmItems = document.querySelectorAll('.algorithm-option');
+            algorithmItems.forEach(item => {
+                item.classList.remove('bg-primary/5', 'border-primary');
+                if (item.querySelector('span.font-medium').textContent === algName) {
+                    item.classList.add('bg-primary/5', 'border-primary');
+                }
+            });
+            selectedAlgorithm = algName;
+            document.getElementById('algorithm-label').textContent = `算法：${algName}`;
+        }
+
+        function calculateHash(text, algorithm) {
+            switch (algorithm) {
+                case 'SHA-256':
+                    return CryptoJS.SHA256(text).toString();
+                case 'SHA-512':
+                    return CryptoJS.SHA512(text).toString();
+                case 'MD5':
+                    return CryptoJS.MD5(text).toString();
+                case 'SHA-1':
+                    return CryptoJS.SHA1(text).toString();
+                case 'SHA-3-256':
+                    return CryptoJS.SHA3(text, {outputLength: 256}).toString();
+                case 'Whirlpool':
+                    return CryptoJS.Whirlpool(text).toString();
+                default:
+                    return CryptoJS.SHA256(text).toString();
+            }
+        }
+
+        document.addEventListener('DOMContentLoaded', () => {
+            const form = document.getElementById('hash-form');
+            const inputText = document.getElementById('input-text');
+            const hashResult = document.getElementById('hash-result');
+            const resultCard = document.getElementById('result-card');
+            const copyBtn = document.getElementById('copy-btn');
+            const clearBtn = document.getElementById('clear-btn');
+
+            form.addEventListener('submit', (e) => {
+                e.preventDefault();
+                const text = inputText.value.trim();
+                const result = calculateHash(text, selectedAlgorithm);
+                hashResult.textContent = result;
+                resultCard.classList.remove('hidden');
+                copyBtn.disabled = false;
+                resultCard.scrollIntoView({behavior: 'smooth', block: 'start'});
+            });
+
+            copyBtn.addEventListener('click', () => {
+                navigator.clipboard.writeText(hashResult.textContent).then(() => {
+                    const original = copyBtn.innerHTML;
+                    copyBtn.innerHTML = '复制成功';
+                    setTimeout(() => copyBtn.innerHTML = original, 1500);
+                });
+            });
+
+            clearBtn.addEventListener('click', () => {
+                inputText.value = '';
+                hashResult.textContent = '';
+                resultCard.classList.add('hidden');
+                copyBtn.disabled = true;
+                selectAlgorithm(selectedAlgorithm);
+            });
+        });
+    </script>
+</body>
+</html>
